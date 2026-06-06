@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # AI Vehicle Import Intelligence Platform
 
 ## Overview
@@ -34,3 +35,7 @@ An AI-powered platform that automates vehicle auction analysis, import price est
 ## Development Status
 
 🚧 In Development
+=======
+# ai-vehicle-import-intelligence-platform
+AI-powered vehicle auction analysis, import cost estimation, and market intelligence platform using OCR, workflow automation, and analytics.
+>>>>>>> 6b4488fc0c9bf39651ad178726616e2ab85834f7
