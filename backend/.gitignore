@@ -1,0 +1,162 @@
+# ============================================================================
+# GIT IGNORE FILE - Files that should NEVER be committed to git
+# ============================================================================
+# This file tells git which files/folders to ignore when committing
+# These contain sensitive data or are automatically generated
+# ============================================================================
+
+# ============================================================================
+# ENVIRONMENT VARIABLES - CRITICAL: NEVER COMMIT
+# ============================================================================
+# .env files contain database passwords, API keys, secrets
+# Each developer has their own .env with their local configuration
+# .env.example is committed (shows what variables are needed)
+
+.env
+.env.local
+.env.*.local
+.env.production
+.env.staging
+
+# ============================================================================
+# NODE MODULES - AUTOMATICALLY GENERATED
+# ============================================================================
+# node_modules folder is created by npm install
+# It's large (thousands of files) and can be regenerated from package.json
+# Others can do: npm install to get same versions
+
+node_modules/
+package-lock.json
+npm-debug.log
+yarn-lock.json
+
+# ============================================================================
+# IDE AND EDITOR FILES - DEVELOPER-SPECIFIC
+# ============================================================================
+# Different developers use different editors
+# Their config files shouldn't be in git
+
+# Visual Studio Code
+.vscode/
+.vscode/settings.json
+.vscode/launch.json
+.vscode/extensions.json
+
+# IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+.vim/
+*.swp
+*.swo
+*~
+
+# Emacs
+*~
+\#*\#
+.\#*
+
+# General editor temp files
+*.tmp
+*.bak
+
+# ============================================================================
+# OS FILES - OPERATING SYSTEM SPECIFIC
+# ============================================================================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Linux
+.directory
+
+# ============================================================================
+# BUILD AND LOG FILES - AUTOMATICALLY GENERATED
+# ============================================================================
+# These are created during build/test and shouldn't be committed
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# Build directories
+dist/
+build/
+out/
+bin/
+
+# Cache directories
+.cache/
+.parcel-cache/
+
+# Coverage reports
+coverage/
+.nyc_output/
+
+# ============================================================================
+# TEMPORARY FILES
+# ============================================================================
+
+# OS temp files
+*.tmp
+*.temp
+
+# Build artifacts
+*.o
+*.a
+*.so
+
+# Database files (development only)
+*.sqlite
+*.db
+
+# ============================================================================
+# PROJECT-SPECIFIC
+# ============================================================================
+# Add any other files specific to this project that shouldn't be committed
+
+# Uploaded files
+uploads/
+temp/
+tmp/
+
+# Local configuration that changes
+config.local.js
+
+# Debug files
+debug.log
+debug/
+
+# ============================================================================
+# COMMENTS
+# ============================================================================
+# Why we ignore these:
+# 1. Security: Secrets shouldn't be in git (anyone with repo can see them)
+# 2. Size: node_modules is huge, can be regenerated
+# 3. Developer-specific: IDE files don't help other developers
+# 4. Noise: Log files clutter git history
+# 5. Platform-specific: OS files vary by computer
+#
+# REMEMBER:
+# - Use .env for secrets (but don't commit it)
+# - Use .env.example to show what variables are needed
+# - Commit only source code and configuration examples
+# - Never commit node_modules
+# ============================================================================
