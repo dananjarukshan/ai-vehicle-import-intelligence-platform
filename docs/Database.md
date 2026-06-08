@@ -1,28 +1,17 @@
-Main Tables
-users
-Column	        Type
-id	            UUID
-name	        TEXT
-email	        TEXT
-password_hash	TEXT
-role	        TEXT
+# Database Design
 
-vehicles
-Column	        Type
-id	            UUID
-make	        TEXT
-model	        TEXT
-year	        INTEGER
-mileage	        INTEGER
-auction_grade	TEXT
-auction_price	NUMERIC
-import_cost	    NUMERIC
-selling_price	NUMERIC
-created_at	    TIMESTAMP
+## users
 
-uploads
-Column	    Type
-id	        UUID
-image_url	TEXT
-vehicle_id	UUID
-uploaded_at	TIMESTAMP
+Stores system users.
+
+## vehicles
+
+Stores extracted vehicle information.
+
+## uploads
+
+Stores uploaded auction screenshots.
+
+## price_estimations
+
+Stores calculated import and selling prices.
