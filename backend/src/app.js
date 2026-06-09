@@ -169,6 +169,10 @@ console.log('✅ CORS middleware configured');
 // - Response status
 // - How long it took
 
+const dbTestRoutes = require('./routes/dbTest');
+app.use(`${config.apiPrefix}/db-test`, dbTestRoutes);
+// Creates route at: /api/v1/db-test
+
 const { requestLogger } = require('./middleware/logger');
 app.use(requestLogger);
 
