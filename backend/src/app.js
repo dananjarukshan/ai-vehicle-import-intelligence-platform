@@ -276,7 +276,12 @@ console.log('✅ Security headers configured');
 // PUT /api/v1/vehicles/123 → Update vehicle with ID 123
 // DELETE /api/v1/vehicles/123 → Delete vehicle with ID 123
 //
-// These will be added here when we build controllers
+// Import vehicle routes
+const vehicleRoutes = require('./routes/vehicleRoutes');
+// Register vehicle routes under '/api' prefix (giving us /api/vehicles)
+app.use('/api', vehicleRoutes);
+
+console.log('✅ Vehicle routes registered at /api');
 
 // Example route to show API is working
 // In production, these would be in separate route files
