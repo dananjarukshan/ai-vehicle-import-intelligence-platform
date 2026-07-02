@@ -84,7 +84,65 @@ async function getAllVehicles() {
   }
 }
 
+/**
+ * Fetches a single vehicle record by its ID from the 'vehicles' table in Supabase.
+ * 
+ * WHY IS THIS FUNCTION ASYNC?
+ * Just like getAllVehicles, querying a specific vehicle by ID involves making a request 
+ * across the network to Supabase. This takes time, so we make this function asynchronous 
+ * and use the `await` keyword to wait for the database response.
+ * 
+ * @param {string|number} id - The unique ID of the vehicle we want to retrieve.
+ * @returns {Promise<Object|null>} A promise that resolves to the vehicle object, or null if not found.
+ * @throws {Error} Throws a detailed error if the database query fails.
+ */
+async function getVehicleById(id) {
+  try {
+    // We send a query to Supabase and wait for it to finish.
+    // Let's break down this query:
+    //
+    // 1. `supabase.from('vehicles')`
+    //    Tells Supabase we want to query the 'vehicles' table.
+    //
+    // 2. `.select('*')`
+    //    Instructs Supabase to retrieve all columns for the matched record.
+    //
+    // 3. `.eq('id', id)`
+    //    This is a filter condition. 'eq' stands for "equal". It tells Supabase to only 
+    //    return records where the 'id' column matches the 'id' parameter we passed in.
+    //
+    // 4. `.maybeSingle()`
+    //    Tells Supabase that we expect either one record or no record at all.
+    //    Normally, if you query and find nothing, Supabase might not return null or might throw.
+    //    Using `.maybeSingle()` ensures that:
+    //    - If 1 row is found, it returns that single object (not an array of objects).
+    //    - If 0 rows are found, it returns `null` (without throwing an error).
+    //    - If more than 1 row is found, it throws an error (since ID should be unique).
+    const { data, error } = await supabase
+      .from('vehicles')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+
+    // If Supabase encountered a database or network error, it will populate the error object.
+    if (error) {
+      throw new Error(`Supabase Query Error: ${error.message} (Code: ${error.code})`);
+    }
+
+    // If successful, data will be the vehicle object, or null if no vehicle matched the ID.
+    return data;
+  } catch (err) {
+    // Log the error to the server console for debugging purposes.
+    console.error(`Error occurred in getVehicleById Service for ID ${id}:`, err.message);
+    
+    // Propagate the error up to the controller layer.
+    throw err;
+  }
+}
+
 // Export the service functions so they can be imported in the controllers.
 module.exports = {
   getAllVehicles,
+  getVehicleById,
 };
+

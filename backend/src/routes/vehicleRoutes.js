@@ -43,5 +43,18 @@ const vehicleController = require('../controllers/vehicleController');
 // This means the full URL path will be: GET http://localhost:3000/api/vehicles
 router.get('/vehicles', vehicleController.getVehicles);
 
+// GET /vehicles/:id
+//
+// HOW THIS WORKS:
+// - `router.get`: Configures this path to respond only to GET requests.
+// - `'/vehicles/:id'`: Uses a colon (:id) to define a route parameter named 'id'.
+//   Express will parse whatever value is provided at this position in the path 
+//   and place it in `req.params.id`.
+// - `vehicleController.getVehicle`: Registers our controller function as the handler.
+//
+// Full URL path: GET http://localhost:3000/api/vehicles/:id
+router.get('/vehicles/:id', vehicleController.getVehicle);
+
 // Export the router so it can be registered (mounted) in the main app.js file.
 module.exports = router;
+
