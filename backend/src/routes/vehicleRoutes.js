@@ -77,8 +77,21 @@ router.post('/vehicles', vehicleController.createVehicleRecord);
 // Full URL path: PUT http://localhost:3000/api/vehicles/:id
 router.put('/vehicles/:id', vehicleController.updateVehicleRecord);
 
+// DELETE /vehicles/:id
+//
+// HOW THIS WORKS:
+// - `router.delete`: Tells Express to listen only for HTTP DELETE requests.
+// - `'/vehicles/:id'`: Uses a colon (:id) to define a route parameter named 'id'.
+//   Express will parse whatever value is provided at this position in the path 
+//   and place it in `req.params.id`.
+// - `vehicleController.deleteVehicleRecord`: Registers our controller function as the handler.
+//
+// Full URL path: DELETE http://localhost:3000/api/vehicles/:id
+router.delete('/vehicles/:id', vehicleController.deleteVehicleRecord);
+
 // Export the router so it can be registered (mounted) in the main app.js file.
 module.exports = router;
+
 
 
 

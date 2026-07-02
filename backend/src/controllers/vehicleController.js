@@ -23,7 +23,7 @@
 // ============================================================================
 
 // Import the required service functions from our database service layer.
-const { getAllVehicles, getVehicleById, createVehicle, updateVehicle } = require('../services/vehicleService');
+const { getAllVehicles, getVehicleById, createVehicle, updateVehicle, deleteVehicle } = require('../services/vehicleService');
 
 /**
  * Express controller handler to fetch all vehicles.
@@ -233,10 +233,63 @@ async function updateVehicleRecord(req, res) {
   }
 }
 
+/**
+ * Express controller handler to delete an existing vehicle record.
+ * 
+ * WHY IS THIS FUNCTION ASYNC?
+ * It calls `deleteVehicle(id)` which requests a database deletion over the internet from Supabase.
+ * Because that network operation is asynchronous, we must use `await` and mark this controller function as `async`.
+ * 
+ * @param {express.Request} req - The Express HTTP Request object.
+ * @param {express.Response} res - The Express HTTP Response object.
+ */
+async function deleteVehicleRecord(req, res) {
+  try {
+    // 1. Read the vehicle ID from the URL path parameters (req.params.id).
+    const { id } = req.params;
+
+    // 2. Validate that the ID parameter was actually provided in the request URL.
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        message: 'Vehicle ID is required.',
+      });
+    }
+
+    // 3. Call the service layer function to delete the vehicle row in Supabase.
+    const deletedVehicle = await deleteVehicle(id);
+
+    // 4. If no vehicle record matched the ID (service returned null), respond with a 404 (Not Found).
+    if (!deletedVehicle) {
+      return res.status(404).json({
+        success: false,
+        message: `Vehicle with ID ${id} not found.`,
+      });
+    }
+
+    // 5. If delete succeeded, return a 200 (OK) response indicating success along with the deleted data.
+    return res.status(200).json({
+      success: true,
+      message: 'Vehicle record deleted successfully.',
+      data: deletedVehicle,
+    });
+  } catch (error) {
+    // 6. Log the unexpected error to the server console.
+    console.error(`Error caught in deleteVehicleRecord controller for ID ${req.params?.id}:`, error);
+
+    // 7. Return a 500 (Internal Server Error) status code.
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'An unexpected error occurred while deleting the vehicle record.',
+    });
+  }
+}
+
 // Export the controller handler functions so they can be registered in the router.
 module.exports = {
   getVehicles,
   getVehicle,
   createVehicleRecord,
   updateVehicleRecord,
+  deleteVehicleRecord,
 };

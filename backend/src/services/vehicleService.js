@@ -254,13 +254,72 @@ async function updateVehicle(id, updateData) {
   }
 }
 
+/**
+ * Deletes a vehicle record from the 'vehicles' table in Supabase.
+ * 
+ * WHY IS THIS FUNCTION ASYNC?
+ * Deleting a record from the database requires communicating with the Supabase server 
+ * over the network. Because this network request takes time to complete, we mark the 
+ * function as `async` and use the `await` keyword.
+ * 
+ * @param {string|number} id - The unique ID of the vehicle to be deleted.
+ * @returns {Promise<Object|null>} A promise that resolves to the deleted vehicle object, or null if not found.
+ * @throws {Error} Throws a detailed error if the database delete fails.
+ */
+async function deleteVehicle(id) {
+  try {
+    // We send a delete request to Supabase and wait for it to finish.
+    // Let's break down this query:
+    //
+    // 1. `supabase.from('vehicles')`
+    //    Tells Supabase we want to interact with the 'vehicles' table.
+    //
+    // 2. `.delete()`
+    //    Specifies that this is a DELETE operation to remove data.
+    //
+    // 3. `.eq('id', id)`
+    //    The filter constraint. This ensures we only delete the specific row where 
+    //    the 'id' column matches the ID we passed. Without this filter, it would delete all rows!
+    //
+    // 4. `.select()`
+    //    Instructs Supabase to return the row details of the deleted record.
+    //
+    // 5. `.maybeSingle()`
+    //    Configures the query to expect at most one matching deleted row.
+    //    - If the row existed and was deleted, it returns that single deleted object.
+    //    - If no row matched the ID, it returns `null` (without throwing an error).
+    const { data, error } = await supabase
+      .from('vehicles')
+      .delete()
+      .eq('id', id)
+      .select()
+      .maybeSingle();
+
+    // If Supabase encountered a database or network error, we throw it.
+    if (error) {
+      throw new Error(`Supabase Delete Error: ${error.message} (Code: ${error.code})`);
+    }
+
+    // Return the deleted vehicle object (or null if the vehicle did not exist).
+    return data;
+  } catch (err) {
+    // Log the error to the server console.
+    console.error(`Error occurred in deleteVehicle Service for ID ${id}:`, err.message);
+    
+    // Propagate the error to the controller.
+    throw err;
+  }
+}
+
 // Export the service functions so they can be imported in the controllers.
 module.exports = {
   getAllVehicles,
   getVehicleById,
   createVehicle,
   updateVehicle,
+  deleteVehicle,
 };
+
 
 
 
