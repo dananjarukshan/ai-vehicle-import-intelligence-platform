@@ -65,7 +65,20 @@ router.get('/vehicles/:id', vehicleController.getVehicle);
 // Full URL path: POST http://localhost:3000/api/vehicles
 router.post('/vehicles', vehicleController.createVehicleRecord);
 
+// PUT /vehicles/:id
+//
+// HOW THIS WORKS:
+// - `router.put`: Tells Express to listen only for HTTP PUT requests.
+// - `'/vehicles/:id'`: Uses a colon (:id) to define a route parameter named 'id'.
+//   Express will parse whatever value is provided at this position in the path 
+//   and place it in `req.params.id`.
+// - `vehicleController.updateVehicleRecord`: Registers our controller function as the handler.
+//
+// Full URL path: PUT http://localhost:3000/api/vehicles/:id
+router.put('/vehicles/:id', vehicleController.updateVehicleRecord);
+
 // Export the router so it can be registered (mounted) in the main app.js file.
 module.exports = router;
+
 
 

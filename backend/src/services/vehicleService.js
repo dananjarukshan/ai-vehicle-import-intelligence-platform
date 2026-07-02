@@ -194,11 +194,73 @@ async function createVehicle(vehicleData) {
   }
 }
 
+/**
+ * Updates an existing vehicle record in the 'vehicles' table in Supabase.
+ * 
+ * WHY IS THIS FUNCTION ASYNC?
+ * Just like fetching or creating records, updating a row in the database involves 
+ * a network request to the remote Supabase database. This takes time, so we make this 
+ * function asynchronous and use `await` to pause execution until the response returns.
+ * 
+ * @param {string|number} id - The unique ID of the vehicle we want to update.
+ * @param {Object} updateData - The object containing the columns and values we want to update.
+ * @returns {Promise<Object|null>} A promise that resolves to the updated vehicle object, or null if not found.
+ * @throws {Error} Throws a detailed error if the database update fails.
+ */
+async function updateVehicle(id, updateData) {
+  try {
+    // We send an update query to Supabase and wait for it to complete.
+    // Let's break down this query:
+    //
+    // 1. `supabase.from('vehicles')`
+    //    Specifies that we are interacting with the 'vehicles' table.
+    //
+    // 2. `.update(updateData)`
+    //    Tells Supabase to perform an UPDATE statement, modifying only the fields 
+    //    present in the `updateData` object (e.g. updating mileage or price).
+    //
+    // 3. `.eq('id', id)`
+    //    This is the WHERE clause filter. We tell Supabase to only update the row where 
+    //    the 'id' column matches the specific ID we passed.
+    //
+    // 4. `.select()`
+    //    Chaining `.select()` is required so that Supabase returns the details of the 
+    //    newly updated database row.
+    //
+    // 5. `.maybeSingle()`
+    //    Specifies that we expect either one updated record or no record at all (if the ID doesn't exist).
+    //    - If the row exists and was updated, it returns that single updated object.
+    //    - If no row matched the ID, it returns `null` (rather than raising an error).
+    const { data, error } = await supabase
+      .from('vehicles')
+      .update(updateData)
+      .eq('id', id)
+      .select()
+      .maybeSingle();
+
+    // If Supabase encountered an error (like schema or constraint violation), we throw it.
+    if (error) {
+      throw new Error(`Supabase Update Error: ${error.message} (Code: ${error.code})`);
+    }
+
+    // Return the updated vehicle object (or null if no record was found/updated).
+    return data;
+  } catch (err) {
+    // Log the error to the server console.
+    console.error(`Error occurred in updateVehicle Service for ID ${id}:`, err.message);
+    
+    // Propagate the error to the controller.
+    throw err;
+  }
+}
+
 // Export the service functions so they can be imported in the controllers.
 module.exports = {
   getAllVehicles,
   getVehicleById,
   createVehicle,
+  updateVehicle,
 };
+
 
 

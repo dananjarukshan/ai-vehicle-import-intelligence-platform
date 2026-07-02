@@ -23,7 +23,7 @@
 // ============================================================================
 
 // Import the required service functions from our database service layer.
-const { getAllVehicles, getVehicleById, createVehicle } = require('../services/vehicleService');
+const { getAllVehicles, getVehicleById, createVehicle, updateVehicle } = require('../services/vehicleService');
 
 /**
  * Express controller handler to fetch all vehicles.
@@ -168,9 +168,75 @@ async function createVehicleRecord(req, res) {
   }
 }
 
+/**
+ * Express controller handler to update an existing vehicle record.
+ * 
+ * WHY IS THIS FUNCTION ASYNC?
+ * It calls `updateVehicle(id, updateData)` which executes a network update query against Supabase.
+ * Since this database interaction is asynchronous, we mark the controller as `async` and use the `await` keyword.
+ * 
+ * @param {express.Request} req - The Express HTTP Request object.
+ * @param {express.Response} res - The Express HTTP Response object.
+ */
+async function updateVehicleRecord(req, res) {
+  try {
+    // 1. Read the vehicle ID from the URL path parameters (req.params.id).
+    const { id } = req.params;
+
+    // 2. Read the update data from the HTTP request body (req.body).
+    const updateData = req.body;
+
+    // 3. Validate that the ID parameter was provided.
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        message: 'Vehicle ID is required.',
+      });
+    }
+
+    // 4. Validate that the request body is not empty.
+    //    An empty body means there's nothing to update. Object.keys(updateData).length checks the number
+    //    of keys (fields) inside the JSON object sent by the client.
+    if (!updateData || Object.keys(updateData).length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Request body is empty. Please provide fields to update.',
+      });
+    }
+
+    // 5. Call the service layer function to perform the update in Supabase.
+    const updatedVehicle = await updateVehicle(id, updateData);
+
+    // 6. If no vehicle matched the ID (service returned null), respond with a 404 (Not Found).
+    if (!updatedVehicle) {
+      return res.status(404).json({
+        success: false,
+        message: `Vehicle with ID ${id} not found.`,
+      });
+    }
+
+    // 7. If successful, return a 200 (OK) response containing the updated record.
+    return res.status(200).json({
+      success: true,
+      message: 'Vehicle record updated successfully.',
+      data: updatedVehicle,
+    });
+  } catch (error) {
+    // 8. Log the error to the server console.
+    console.error(`Error caught in updateVehicleRecord controller for ID ${req.params?.id}:`, error);
+
+    // 9. Return a 500 (Internal Server Error) status code.
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'An unexpected error occurred while updating the vehicle record.',
+    });
+  }
+}
+
 // Export the controller handler functions so they can be registered in the router.
 module.exports = {
   getVehicles,
   getVehicle,
   createVehicleRecord,
+  updateVehicleRecord,
 };
