@@ -55,6 +55,17 @@ router.get('/vehicles', vehicleController.getVehicles);
 // Full URL path: GET http://localhost:3000/api/vehicles/:id
 router.get('/vehicles/:id', vehicleController.getVehicle);
 
+// POST /vehicles
+//
+// HOW THIS WORKS:
+// - `router.post`: Tells Express to listen only for HTTP POST requests.
+// - `'/vehicles'`: The path we are listening on for creating a new vehicle.
+// - `vehicleController.createVehicleRecord`: The function that runs when a user hits this endpoint.
+//
+// Full URL path: POST http://localhost:3000/api/vehicles
+router.post('/vehicles', vehicleController.createVehicleRecord);
+
 // Export the router so it can be registered (mounted) in the main app.js file.
 module.exports = router;
+
 

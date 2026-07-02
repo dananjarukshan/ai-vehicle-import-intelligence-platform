@@ -140,9 +140,65 @@ async function getVehicleById(id) {
   }
 }
 
+/**
+ * Inserts a new vehicle record into the 'vehicles' table in Supabase.
+ * 
+ * WHY IS THIS FUNCTION ASYNC?
+ * Inserting data into the database requires communicating with the Supabase server 
+ * over the network. This network call is asynchronous, meaning it doesn't resolve 
+ * instantly. By using `async` and `await`, we pause execution here until the 
+ * insert operation completes and returns the result.
+ * 
+ * @param {Object} vehicleData - The vehicle information to insert (make, model, year, etc.).
+ * @returns {Promise<Object>} A promise that resolves to the newly created vehicle object.
+ * @throws {Error} Throws a detailed error if the database insert fails.
+ */
+async function createVehicle(vehicleData) {
+  try {
+    // We send an insert request to Supabase and wait for it to complete.
+    // Let's break down this Supabase query:
+    //
+    // 1. `supabase.from('vehicles')`
+    //    Tells Supabase we want to interact with the 'vehicles' table.
+    //
+    // 2. `.insert(vehicleData)`
+    //    Inserts the provided object containing the new vehicle's fields into the database.
+    //
+    // 3. `.select()`
+    //    Instructs Supabase to return the actual record that was inserted. By default, 
+    //    an insert query does not return the inserted data unless we explicitly chain `.select()`.
+    //
+    // 4. `.single()`
+    //    Tells Supabase that we expect a single row to be returned, so format the 
+    //    returned data as a single JSON object instead of an array of objects.
+    const { data, error } = await supabase
+      .from('vehicles')
+      .insert(vehicleData)
+      .select()
+      .single();
+
+    // If Supabase encountered an error (e.g. database schema mismatch or permission issue),
+    // it returns an error object which we check and throw.
+    if (error) {
+      throw new Error(`Supabase Insert Error: ${error.message} (Code: ${error.code})`);
+    }
+
+    // Return the inserted vehicle record back to the controller.
+    return data;
+  } catch (err) {
+    // Log the error to the server console for debugging.
+    console.error('Error occurred in createVehicle Service:', err.message);
+    
+    // Propagate the error to the controller so it can send a 500 status code.
+    throw err;
+  }
+}
+
 // Export the service functions so they can be imported in the controllers.
 module.exports = {
   getAllVehicles,
   getVehicleById,
+  createVehicle,
 };
+
 

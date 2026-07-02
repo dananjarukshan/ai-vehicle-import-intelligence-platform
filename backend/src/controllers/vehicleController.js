@@ -23,7 +23,7 @@
 // ============================================================================
 
 // Import the required service functions from our database service layer.
-const { getAllVehicles, getVehicleById } = require('../services/vehicleService');
+const { getAllVehicles, getVehicleById, createVehicle } = require('../services/vehicleService');
 
 /**
  * Express controller handler to fetch all vehicles.
@@ -118,8 +118,59 @@ async function getVehicle(req, res) {
   }
 }
 
+/**
+ * Express controller handler to create a new vehicle record.
+ * 
+ * WHY IS THIS FUNCTION ASYNC?
+ * Because it calls the `createVehicle(vehicleData)` service function, which inserts a 
+ * record into Supabase over the network. Network operations are asynchronous, so we 
+ * must use the `await` keyword and mark the controller function as `async`.
+ * 
+ * @param {express.Request} req - The Express HTTP Request object (contains body data).
+ * @param {express.Response} res - The Express HTTP Response object (used to send response).
+ */
+async function createVehicleRecord(req, res) {
+  try {
+    // 1. Read the vehicle data from the HTTP request body (req.body).
+    //    The body-parser middleware has already converted the client's raw JSON into a JS object.
+    const vehicleData = req.body;
+
+    // 2. Validate that the absolute minimum required fields are present.
+    //    For a vehicle record to be valid, we must have the make, model, and year.
+    const { make, model, year } = vehicleData;
+    if (!make || !model || !year) {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing required fields: make, model, and year are required.',
+      });
+    }
+
+    // 3. Call the service layer function to insert the data into Supabase.
+    const newVehicle = await createVehicle(vehicleData);
+
+    // 4. Send a successful creation response.
+    //    - res.status(201): HTTP Status code 201 Created is the standard status code for successfully creating a resource.
+    //    - We return success: true, a friendly message, and the inserted data.
+    return res.status(201).json({
+      success: true,
+      message: 'Vehicle record created successfully.',
+      data: newVehicle,
+    });
+  } catch (error) {
+    // 5. Log the unexpected error to the server console.
+    console.error('Error caught in createVehicleRecord controller:', error);
+
+    // 6. Return a 500 (Internal Server Error) status code.
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'An unexpected error occurred while creating the vehicle record.',
+    });
+  }
+}
+
 // Export the controller handler functions so they can be registered in the router.
 module.exports = {
   getVehicles,
   getVehicle,
+  createVehicleRecord,
 };
