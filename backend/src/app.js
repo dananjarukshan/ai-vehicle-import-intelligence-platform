@@ -278,10 +278,13 @@ console.log('✅ Security headers configured');
 //
 // Import vehicle routes
 const vehicleRoutes = require('./routes/vehicleRoutes');
-// Register vehicle routes under '/api' prefix (giving us /api/vehicles)
-app.use('/api', vehicleRoutes);
+// Register vehicle routes under '/api/v1' prefix (giving us /api/v1/vehicles)
+// WHY /api/v1?
+// Adding a version number (v1) to the URL lets us release a /api/v2 in the future
+// without breaking existing clients that still use /api/v1. This is standard practice.
+app.use('/api/v1', vehicleRoutes);
 
-console.log('✅ Vehicle routes registered at /api');
+console.log('✅ Vehicle routes registered at /api/v1');
 
 // Example route to show API is working
 // In production, these would be in separate route files

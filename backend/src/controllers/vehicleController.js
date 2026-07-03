@@ -13,11 +13,11 @@
 // 1. Receiving the HTTP request from the router.
 // 2. Extracting parameters or data from the request (headers, query params, body).
 // 3. Calling the appropriate Service function to fetch or manipulate data.
-// 4. Formatting and sending back the HTTP response with appropriate status codes (like 200, 404, 500).
+// 4. Formatting and sending back the HTTP response with appropriate status codes.
 //
 // WHY USE A CONTROLLER LAYER?
 // By isolating request/response logic here, we separate HTTP concerns (like status
-// codes and headers) from database logic. The Controller doesn't need to know 
+// codes and headers) from database logic. The Controller doesn't need to know
 // how Supabase works—it just calls the Service and sends the result back to the user.
 //
 // ============================================================================
@@ -25,263 +25,206 @@
 // Import the required service functions from our database service layer.
 const { getAllVehicles, getVehicleById, createVehicle, updateVehicle, deleteVehicle } = require('../services/vehicleService');
 
+// Import the reusable API response helpers.
+// Instead of writing res.status(200).json({ success: true, ... }) everywhere,
+// we call sendSuccess() or sendError() and get a consistent, clean response shape.
+const { sendSuccess, sendError } = require('../utils/apiResponse');
+
+// Import the validator functions that clean and validate incoming request body data.
+const { validateCreateVehicle, validateUpdateVehicle } = require('../validators/vehicleValidator');
+
+// ============================================================================
+// GET /api/v1/vehicles
+// ============================================================================
+
 /**
  * Express controller handler to fetch all vehicles.
- * 
+ *
  * WHY IS THIS FUNCTION ASYNC?
  * Because it calls `getAllVehicles()`, which is an asynchronous database operation.
  * We must use `await` when calling the service, so we mark `getVehicles` as `async`.
- * 
- * @param {express.Request} req - The Express HTTP Request object (contains request info).
- * @param {express.Response} res - The Express HTTP Response object (used to send data back).
+ *
+ * @param {express.Request} req - The Express HTTP Request object.
+ * @param {express.Response} res - The Express HTTP Response object.
  */
 async function getVehicles(req, res) {
   try {
-    // 1. Call the service layer to get the list of vehicles.
-    //    We 'await' the database result so execution pauses here until data is ready.
+    // 1. Call the service layer to get the list of vehicles from Supabase.
     const vehicles = await getAllVehicles();
 
-    // 2. Send a success response.
-    //    - res.status(200): Sets the HTTP status code to 200 (OK).
-    //    - .json({...}): Converts the JavaScript object into JSON string and sends it.
-    return res.status(200).json({
-      success: true,
-      data: vehicles,
+    // 2. Send a 200 OK success response.
+    //    We include a 'meta' object with the count so the API caller knows
+    //    how many records were returned without counting the array manually.
+    return sendSuccess(res, 200, 'Vehicles fetched successfully.', vehicles, {
+      count: vehicles.length,
     });
   } catch (error) {
-    // 3. Log the error on the server side so developers can see it.
+    // 3. Log the error on the server so developers can investigate.
     console.error('Error caught in getVehicles controller:', error);
 
-    // 4. Send an error response back to the client.
-    //    - res.status(500): Sets status to 500 (Internal Server Error).
-    //    - We send success: false and a descriptive message so the client knows what failed.
-    return res.status(500).json({
-      success: false,
-      message: error.message || 'An unexpected error occurred while fetching vehicles.',
-    });
+    // 4. Send a 500 Internal Server Error response with no errors array
+    //    (we only know it failed unexpectedly, not due to bad input).
+    return sendError(res, 500, error.message || 'An unexpected error occurred while fetching vehicles.');
   }
 }
 
+// ============================================================================
+// GET /api/v1/vehicles/:id
+// ============================================================================
+
 /**
  * Express controller handler to fetch a single vehicle by its ID.
- * 
- * WHY IS THIS FUNCTION ASYNC?
- * It needs to call `getVehicleById(id)` which connects to Supabase via the internet.
- * Since that database query is asynchronous and returns a Promise, we must mark this 
- * controller function as `async` and use the `await` keyword.
- * 
+ *
  * @param {express.Request} req - The Express HTTP Request object.
  * @param {express.Response} res - The Express HTTP Response object.
  */
 async function getVehicle(req, res) {
   try {
-    // 1. Read the 'id' parameter from the request URL (req.params.id).
-    //    For example, if the user visits /api/vehicles/123, then req.params.id will be "123".
+    // 1. Read the 'id' route parameter from the URL.
     const { id } = req.params;
 
-    // 2. Validate that the ID parameter was actually provided.
-    //    Although Express routes matching '/vehicles/:id' normally guarantee req.params.id is present,
-    //    doing an explicit validation is a great fallback and safe coding practice.
+    // 2. Guard clause: ID should always be present because the route is /vehicles/:id,
+    //    but we check defensively.
     if (!id) {
-      return res.status(400).json({
-        success: false,
-        message: 'Vehicle ID is required.',
-      });
+      return sendError(res, 400, 'Vehicle ID is required.');
     }
 
-    // 3. Call the service function to retrieve the vehicle from the database.
-    //    We use `await` because it's a network request.
+    // 3. Ask the service to find the vehicle in the database.
     const vehicle = await getVehicleById(id);
 
-    // 4. If no vehicle record is found (service returned null), respond with a 404 (Not Found).
+    // 4. If null was returned, no record matched the ID.
     if (!vehicle) {
-      return res.status(404).json({
-        success: false,
-        message: `Vehicle with ID ${id} not found.`,
-      });
+      return sendError(res, 404, `Vehicle with ID ${id} not found.`);
     }
 
-    // 5. If found, return the vehicle data with a 200 (OK) status code.
-    return res.status(200).json({
-      success: true,
-      data: vehicle,
-    });
+    // 5. Vehicle found — return it with 200 OK.
+    return sendSuccess(res, 200, 'Vehicle fetched successfully.', vehicle);
   } catch (error) {
-    // 6. Log the error to the server console so developers can debug it.
     console.error(`Error caught in getVehicle controller for ID ${req.params?.id}:`, error);
-
-    // 7. Return a 500 (Internal Server Error) code to the client.
-    return res.status(500).json({
-      success: false,
-      message: error.message || 'An unexpected error occurred while fetching the vehicle.',
-    });
+    return sendError(res, 500, error.message || 'An unexpected error occurred while fetching the vehicle.');
   }
 }
+
+// ============================================================================
+// POST /api/v1/vehicles
+// ============================================================================
 
 /**
  * Express controller handler to create a new vehicle record.
- * 
- * WHY IS THIS FUNCTION ASYNC?
- * Because it calls the `createVehicle(vehicleData)` service function, which inserts a 
- * record into Supabase over the network. Network operations are asynchronous, so we 
- * must use the `await` keyword and mark the controller function as `async`.
- * 
+ *
+ * WHY DO WE VALIDATE BEFORE CALLING THE SERVICE?
+ * Validating at the controller level stops bad data from ever reaching the
+ * database. This protects data integrity and gives the client a descriptive
+ * list of exactly what was wrong instead of a cryptic database error.
+ *
  * @param {express.Request} req - The Express HTTP Request object (contains body data).
- * @param {express.Response} res - The Express HTTP Response object (used to send response).
+ * @param {express.Response} res - The Express HTTP Response object.
  */
 async function createVehicleRecord(req, res) {
   try {
-    // 1. Read the vehicle data from the HTTP request body (req.body).
-    //    The body-parser middleware has already converted the client's raw JSON into a JS object.
-    const vehicleData = req.body;
+    // 1. Run the request body through our validator.
+    //    validateCreateVehicle() cleans the data AND checks for required fields and valid values.
+    //    It returns { isValid, errors, cleanedData }.
+    const { isValid, errors, cleanedData } = validateCreateVehicle(req.body);
 
-    // 2. Validate that the absolute minimum required fields are present.
-    //    For a vehicle record to be valid, we must have the make, model, and year.
-    const { make, model, year } = vehicleData;
-    if (!make || !model || !year) {
-      return res.status(400).json({
-        success: false,
-        message: 'Missing required fields: make, model, and year are required.',
-      });
+    // 2. If validation failed, return 400 Bad Request with the list of errors.
+    //    We pass the errors array as the third argument to sendError() so the
+    //    client knows exactly what to fix.
+    if (!isValid) {
+      return sendError(res, 400, 'Validation failed. Please correct the errors and try again.', errors);
     }
 
-    // 3. Call the service layer function to insert the data into Supabase.
-    const newVehicle = await createVehicle(vehicleData);
+    // 3. Call the service with the CLEANED data — never raw req.body.
+    //    cleanedData has trimmed strings, converted numbers, and stripped disallowed fields.
+    const newVehicle = await createVehicle(cleanedData);
 
-    // 4. Send a successful creation response.
-    //    - res.status(201): HTTP Status code 201 Created is the standard status code for successfully creating a resource.
-    //    - We return success: true, a friendly message, and the inserted data.
-    return res.status(201).json({
-      success: true,
-      message: 'Vehicle record created successfully.',
-      data: newVehicle,
-    });
+    // 4. Return 201 Created with the newly inserted vehicle record.
+    return sendSuccess(res, 201, 'Vehicle record created successfully.', newVehicle);
   } catch (error) {
-    // 5. Log the unexpected error to the server console.
     console.error('Error caught in createVehicleRecord controller:', error);
-
-    // 6. Return a 500 (Internal Server Error) status code.
-    return res.status(500).json({
-      success: false,
-      message: error.message || 'An unexpected error occurred while creating the vehicle record.',
-    });
+    return sendError(res, 500, error.message || 'An unexpected error occurred while creating the vehicle record.');
   }
 }
 
+// ============================================================================
+// PUT /api/v1/vehicles/:id
+// ============================================================================
+
 /**
  * Express controller handler to update an existing vehicle record.
- * 
- * WHY IS THIS FUNCTION ASYNC?
- * It calls `updateVehicle(id, updateData)` which executes a network update query against Supabase.
- * Since this database interaction is asynchronous, we mark the controller as `async` and use the `await` keyword.
- * 
+ *
  * @param {express.Request} req - The Express HTTP Request object.
  * @param {express.Response} res - The Express HTTP Response object.
  */
 async function updateVehicleRecord(req, res) {
   try {
-    // 1. Read the vehicle ID from the URL path parameters (req.params.id).
+    // 1. Read the vehicle ID from the URL route parameter.
     const { id } = req.params;
 
-    // 2. Read the update data from the HTTP request body (req.body).
-    const updateData = req.body;
-
-    // 3. Validate that the ID parameter was provided.
+    // 2. Guard clause: ID must be present.
     if (!id) {
-      return res.status(400).json({
-        success: false,
-        message: 'Vehicle ID is required.',
-      });
+      return sendError(res, 400, 'Vehicle ID is required.');
     }
 
-    // 4. Validate that the request body is not empty.
-    //    An empty body means there's nothing to update. Object.keys(updateData).length checks the number
-    //    of keys (fields) inside the JSON object sent by the client.
-    if (!updateData || Object.keys(updateData).length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'Request body is empty. Please provide fields to update.',
-      });
+    // 3. Run the request body through the update validator.
+    //    validateUpdateVehicle() checks that at least one allowed field is provided
+    //    and that all provided fields have valid values.
+    const { isValid, errors, cleanedData } = validateUpdateVehicle(req.body);
+
+    // 4. If validation failed, return 400 with the errors array.
+    if (!isValid) {
+      return sendError(res, 400, 'Validation failed. Please correct the errors and try again.', errors);
     }
 
-    // 5. Call the service layer function to perform the update in Supabase.
-    const updatedVehicle = await updateVehicle(id, updateData);
+    // 5. Call the service with the cleaned update data.
+    const updatedVehicle = await updateVehicle(id, cleanedData);
 
-    // 6. If no vehicle matched the ID (service returned null), respond with a 404 (Not Found).
+    // 6. If null was returned, the vehicle ID does not exist.
     if (!updatedVehicle) {
-      return res.status(404).json({
-        success: false,
-        message: `Vehicle with ID ${id} not found.`,
-      });
+      return sendError(res, 404, `Vehicle with ID ${id} not found.`);
     }
 
-    // 7. If successful, return a 200 (OK) response containing the updated record.
-    return res.status(200).json({
-      success: true,
-      message: 'Vehicle record updated successfully.',
-      data: updatedVehicle,
-    });
+    // 7. Return the updated vehicle with 200 OK.
+    return sendSuccess(res, 200, 'Vehicle record updated successfully.', updatedVehicle);
   } catch (error) {
-    // 8. Log the error to the server console.
     console.error(`Error caught in updateVehicleRecord controller for ID ${req.params?.id}:`, error);
-
-    // 9. Return a 500 (Internal Server Error) status code.
-    return res.status(500).json({
-      success: false,
-      message: error.message || 'An unexpected error occurred while updating the vehicle record.',
-    });
+    return sendError(res, 500, error.message || 'An unexpected error occurred while updating the vehicle record.');
   }
 }
 
+// ============================================================================
+// DELETE /api/v1/vehicles/:id
+// ============================================================================
+
 /**
  * Express controller handler to delete an existing vehicle record.
- * 
- * WHY IS THIS FUNCTION ASYNC?
- * It calls `deleteVehicle(id)` which requests a database deletion over the internet from Supabase.
- * Because that network operation is asynchronous, we must use `await` and mark this controller function as `async`.
- * 
+ *
  * @param {express.Request} req - The Express HTTP Request object.
  * @param {express.Response} res - The Express HTTP Response object.
  */
 async function deleteVehicleRecord(req, res) {
   try {
-    // 1. Read the vehicle ID from the URL path parameters (req.params.id).
+    // 1. Read the vehicle ID from the URL route parameter.
     const { id } = req.params;
 
-    // 2. Validate that the ID parameter was actually provided in the request URL.
+    // 2. Guard clause: ID must be present.
     if (!id) {
-      return res.status(400).json({
-        success: false,
-        message: 'Vehicle ID is required.',
-      });
+      return sendError(res, 400, 'Vehicle ID is required.');
     }
 
-    // 3. Call the service layer function to delete the vehicle row in Supabase.
+    // 3. Ask the service to delete the vehicle from the database.
     const deletedVehicle = await deleteVehicle(id);
 
-    // 4. If no vehicle record matched the ID (service returned null), respond with a 404 (Not Found).
+    // 4. If null was returned, no record matched the ID.
     if (!deletedVehicle) {
-      return res.status(404).json({
-        success: false,
-        message: `Vehicle with ID ${id} not found.`,
-      });
+      return sendError(res, 404, `Vehicle with ID ${id} not found.`);
     }
 
-    // 5. If delete succeeded, return a 200 (OK) response indicating success along with the deleted data.
-    return res.status(200).json({
-      success: true,
-      message: 'Vehicle record deleted successfully.',
-      data: deletedVehicle,
-    });
+    // 5. Return the deleted vehicle data with 200 OK so the client can confirm what was removed.
+    return sendSuccess(res, 200, 'Vehicle record deleted successfully.', deletedVehicle);
   } catch (error) {
-    // 6. Log the unexpected error to the server console.
     console.error(`Error caught in deleteVehicleRecord controller for ID ${req.params?.id}:`, error);
-
-    // 7. Return a 500 (Internal Server Error) status code.
-    return res.status(500).json({
-      success: false,
-      message: error.message || 'An unexpected error occurred while deleting the vehicle record.',
-    });
+    return sendError(res, 500, error.message || 'An unexpected error occurred while deleting the vehicle record.');
   }
 }
 
