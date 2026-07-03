@@ -38,32 +38,56 @@ const { validateCreateVehicle, validateUpdateVehicle } = require('../validators/
 // ============================================================================
 
 /**
- * Express controller handler to fetch all vehicles.
+ * Express controller handler to fetch vehicles with optional filtering,
+ * searching, sorting, and pagination.
  *
- * WHY IS THIS FUNCTION ASYNC?
- * Because it calls `getAllVehicles()`, which is an asynchronous database operation.
- * We must use `await` when calling the service, so we mark `getVehicles` as `async`.
+ * HOW DO QUERY PARAMETERS WORK?
+ * When a client requests a URL like:
+ *   GET /api/v1/vehicles?page=2&limit=5&make=Toyota&sortBy=year&sortOrder=asc
+ * Express automatically parses everything after the '?' into the `req.query` object:
+ *   req.query = { page: '2', limit: '5', make: 'Toyota', sortBy: 'year', sortOrder: 'asc' }
+ * Note that all values arrive as STRINGS — the service converts them to the right types.
  *
  * @param {express.Request} req - The Express HTTP Request object.
  * @param {express.Response} res - The Express HTTP Response object.
  */
 async function getVehicles(req, res) {
   try {
-    // 1. Call the service layer to get the list of vehicles from Supabase.
-    const vehicles = await getAllVehicles();
+    // 1. Extract all supported query parameters from the URL.
+    //    We destructure them by name so it is obvious which parameters this endpoint accepts.
+    //    Any parameter not listed here is simply ignored.
+    const {
+      page,       // Which page to return  (default: 1)
+      limit,      // Records per page      (default: 10, max: 100)
+      make,       // Filter by make        (e.g. ?make=Toyota)
+      model,      // Filter by model       (e.g. ?model=Prius)
+      year,       // Filter by exact year  (e.g. ?year=2020)
+      search,     // Search make OR model  (e.g. ?search=civic)
+      sortBy,     // Column to sort by     (e.g. ?sortBy=year)
+      sortOrder,  // 'asc' or 'desc'       (e.g. ?sortOrder=asc)
+    } = req.query;
 
-    // 2. Send a 200 OK success response.
-    //    We include a 'meta' object with the count so the API caller knows
-    //    how many records were returned without counting the array manually.
-    return sendSuccess(res, 200, 'Vehicles fetched successfully.', vehicles, {
-      count: vehicles.length,
+    // 2. Bundle the query options into a single plain object and pass it to the service.
+    //    The service handles all parsing, validation, whitelisting, and database logic.
+    const { data: vehicles, pagination } = await getAllVehicles({
+      page,
+      limit,
+      make,
+      model,
+      year,
+      search,
+      sortBy,
+      sortOrder,
     });
-  } catch (error) {
-    // 3. Log the error on the server so developers can investigate.
-    console.error('Error caught in getVehicles controller:', error);
 
-    // 4. Send a 500 Internal Server Error response with no errors array
-    //    (we only know it failed unexpectedly, not due to bad input).
+    // 3. Send a 200 OK response.
+    //    - `data` contains the array of vehicle records for this page.
+    //    - `meta` contains all pagination details so the React dashboard
+    //      can render "Page 2 of 5" and enable/disable Next/Previous buttons.
+    return sendSuccess(res, 200, 'Vehicles fetched successfully.', vehicles, pagination);
+
+  } catch (error) {
+    console.error('Error caught in getVehicles controller:', error);
     return sendError(res, 500, error.message || 'An unexpected error occurred while fetching vehicles.');
   }
 }

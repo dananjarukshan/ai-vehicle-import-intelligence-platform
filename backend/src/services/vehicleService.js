@@ -28,58 +28,176 @@
 const { supabase } = require('../config/supabaseClient');
 
 /**
- * Fetches all vehicle records from the 'vehicles' table in Supabase.
- * 
+ * Fetches vehicle records from the 'vehicles' table in Supabase.
+ *
+ * This function supports optional query options for pagination, filtering,
+ * searching, and sorting. All options have safe defaults so calling the
+ * function without any arguments still works exactly as before.
+ *
  * WHY IS THIS FUNCTION ASYNC?
  * Querying a database requires sending a request over the internet to Supabase.
- * This takes time (milliseconds to seconds). JavaScript is single-threaded, meaning
- * it normally blocks other code from running while waiting. 
- * By marking this function as `async`, we tell JavaScript that it returns a Promise 
- * (a placeholder for future data) and can pause using the `await` keyword.
- * 
- * @returns {Promise<Array>} A promise that resolves to an array of vehicle objects.
+ * This takes time. By marking this function as `async` we tell JavaScript that
+ * it returns a Promise and can pause at any `await` keyword until data arrives.
+ *
+ * @param {Object} [queryOptions={}] - Optional object containing query configuration.
+ * @param {number} [queryOptions.page=1]          - Which page of results to return (starts at 1).
+ * @param {number} [queryOptions.limit=10]         - How many records per page (max 100).
+ * @param {string} [queryOptions.make]             - Filter by vehicle make (case-insensitive).
+ * @param {string} [queryOptions.model]            - Filter by vehicle model (case-insensitive).
+ * @param {number} [queryOptions.year]             - Filter by exact model year.
+ * @param {string} [queryOptions.search]           - Search term matched against make OR model.
+ * @param {string} [queryOptions.sortBy='created_at'] - Column to sort by.
+ * @param {string} [queryOptions.sortOrder='desc'] - Sort direction: 'asc' or 'desc'.
+ *
+ * @returns {Promise<{data: Array, pagination: Object}>}
+ *   Returns both the vehicle array AND a pagination metadata object.
  * @throws {Error} Throws a detailed error if the database query fails.
  */
-async function getAllVehicles() {
+async function getAllVehicles(queryOptions = {}) {
   try {
-    // We send a query to Supabase and wait for it to finish using `await`.
-    // Let's break down this Supabase query:
-    // 
-    // 1. `supabase.from('vehicles')`
-    //    Tells the client we want to query the 'vehicles' table.
-    //
-    // 2. `.select('*')`
-    //    The '*' is a wildcard meaning "all columns". This fetches every field 
-    //    for each vehicle (like id, brand, model, price, created_at, etc.).
-    //
-    // 3. `.order('created_at', { ascending: false })`
-    //    Orders the returned rows by the 'created_at' timestamp.
-    //    `ascending: false` sorts them in descending order, meaning the most
-    //    recently created/added vehicles will appear first in the array.
-    const { data, error } = await supabase
-      .from('vehicles')
-      .select('*')
-      .order('created_at', { ascending: false });
+    // =========================================================================
+    // STEP 1 — PARSE & SANITISE INPUT OPTIONS
+    // =========================================================================
+    // Destructure options with sensible defaults so every variable is always defined.
+    const {
+      page       = 1,
+      limit      = 10,
+      make,
+      model,
+      year,
+      search,
+      sortBy     = 'created_at',
+      sortOrder  = 'desc',
+    } = queryOptions;
 
-    // Supabase returns an object containing 'data' and 'error'.
-    // If 'error' is not null, it means the query failed (e.g., table does not exist,
-    // network issue, or authentication/permissions failure).
+    // --- Pagination maths ---
+    // Clamp `limit` between 1 and 100 so no one can request 10,000 rows at once.
+    // Number() converts a possible query-string (which is always a string) to a number.
+    const safePage  = Math.max(1, Number(page)  || 1);
+    const safeLimit = Math.min(100, Math.max(1, Number(limit) || 10));
+
+    // Supabase .range() uses zero-based indices.
+    // Example: page 1, limit 10 → from = 0, to = 9  (rows 0..9)
+    //          page 2, limit 10 → from = 10, to = 19 (rows 10..19)
+    const from = (safePage - 1) * safeLimit;
+    const to   = from + safeLimit - 1;
+
+    // --- Sorting whitelist ---
+    // We ONLY allow sorting on specific columns to prevent SQL-injection-like issues
+    // where someone could pass an arbitrary expression as a column name.
+    const ALLOWED_SORT_COLUMNS = [
+      'created_at',
+      'make',
+      'model',
+      'year',
+      'mileage',
+      'auction_price',
+      'estimated_import_cost',
+      'estimated_selling_price',
+    ];
+    // If an invalid column is supplied, fall back silently to the default.
+    const safeSortBy    = ALLOWED_SORT_COLUMNS.includes(sortBy) ? sortBy : 'created_at';
+    // sortOrder must be exactly 'asc' or 'desc'; anything else becomes 'desc'.
+    const safeSortOrder = sortOrder === 'asc' ? 'asc' : 'desc';
+    const ascending     = safeSortOrder === 'asc';
+
+    // =========================================================================
+    // STEP 2 — BUILD THE SUPABASE QUERY
+    // =========================================================================
+    //
+    // `count: 'exact'` tells Supabase to also return the TOTAL number of rows
+    // that match our filters (before pagination), so we can tell the client
+    // "there are 47 results across 5 pages" even if we only return 10 rows.
+    let query = supabase
+      .from('vehicles')
+      .select('*', { count: 'exact' });
+
+    // =========================================================================
+    // STEP 3 — APPLY FILTERS
+    // =========================================================================
+    //
+    // We only add a filter clause if the caller actually provided a value.
+    // `ilike` = case-Insensitive LIKE in PostgreSQL.
+    // The % wildcards mean "contains this text anywhere in the value".
+    // Example: ilike('make', '%toyota%') matches "Toyota", "TOYOTA", "toyota".
+
+    if (make) {
+      // Filter vehicles whose 'make' column contains the search string.
+      query = query.ilike('make', `%${make}%`);
+    }
+
+    if (model) {
+      // Filter vehicles whose 'model' column contains the search string.
+      query = query.ilike('model', `%${model}%`);
+    }
+
+    if (year) {
+      // Filter by exact year. .eq() means "equal to".
+      // Number() converts the string coming from req.query into a proper number.
+      query = query.eq('year', Number(year));
+    }
+
+    // =========================================================================
+    // STEP 4 — APPLY FULL-TEXT SEARCH
+    // =========================================================================
+    //
+    // 'search' matches the term against BOTH make AND model at the same time.
+    // The `or` filter in Supabase is written as a comma-separated string of
+    // individual filter expressions.
+    // Example: search="civic" would find vehicles where make OR model contains "civic".
+
+    if (search) {
+      query = query.or(
+        `make.ilike.%${search}%,model.ilike.%${search}%`
+      );
+    }
+
+    // =========================================================================
+    // STEP 5 — APPLY SORTING AND PAGINATION
+    // =========================================================================
+
+    query = query
+      // Sort the results by the chosen column and direction.
+      .order(safeSortBy, { ascending })
+      // Return only the slice of rows for the requested page.
+      // .range(from, to) is PostgreSQL's LIMIT/OFFSET in disguise.
+      .range(from, to);
+
+    // =========================================================================
+    // STEP 6 — EXECUTE AND CHECK FOR ERRORS
+    // =========================================================================
+
+    const { data, error, count } = await query;
+
     if (error) {
-      // We throw a new error with a clear message including the database error info.
-      // Throwing stops execution here and sends the error to the controller's catch block.
       throw new Error(`Supabase Query Error: ${error.message} (Code: ${error.code})`);
     }
 
-    // If there is no error, 'data' is a JavaScript array containing the records.
-    // We return it to whoever called this function (the controller).
-    return data;
+    // =========================================================================
+    // STEP 7 — BUILD PAGINATION METADATA AND RETURN
+    // =========================================================================
+    //
+    // `count` is the TOTAL number of matching rows across ALL pages.
+    // `data.length` is the number of rows we actually returned on this page.
+    const totalCount  = count ?? 0;
+    const totalPages  = Math.ceil(totalCount / safeLimit);
+
+    const pagination = {
+      total:       totalCount,   // e.g. 47 total vehicles match the filters
+      count:       data.length,  // e.g. 10 vehicles on this page
+      page:        safePage,     // e.g. 2 (current page)
+      limit:       safeLimit,    // e.g. 10 records per page
+      totalPages,                // e.g. 5 pages total
+      hasNextPage: safePage < totalPages,
+      hasPrevPage: safePage > 1,
+    };
+
+    // Return both the records AND the pagination info so the controller
+    // can forward them to the client inside the 'meta' field.
+    return { data, pagination };
+
   } catch (err) {
-    // If any exception happens inside the try block (or if we threw an error above),
-    // it gets caught here. We log it to the server console for debugging.
     console.error('Error occurred in getAllVehicles Service:', err.message);
-    
-    // We re-throw the error so that the controller layer knows something went wrong
-    // and can return a 500 error code to the client.
     throw err;
   }
 }
