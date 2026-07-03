@@ -28,6 +28,9 @@ const router = express.Router();
 // Import the vehicle controller handlers that will process the requests.
 const vehicleController = require('../controllers/vehicleController');
 
+// Import the price estimation controller for the new estimate endpoint.
+const { estimateVehiclePrice } = require('../controllers/priceEstimationController');
+
 // ============================================================================
 // DEFINE ENDPOINTS
 // ============================================================================
@@ -64,6 +67,17 @@ router.get('/vehicles/:id', vehicleController.getVehicle);
 //
 // Full URL path: POST http://localhost:3000/api/vehicles
 router.post('/vehicles', vehicleController.createVehicleRecord);
+
+// POST /vehicles/:id/estimate
+//
+// HOW THIS WORKS:
+// - `router.post`: This endpoint runs a calculation and saves the result.
+// - `'/vehicles/:id/estimate'`: The `:id` parameter tells Express which vehicle to estimate.
+// - `estimateVehiclePrice`: The controller loads the vehicle, calculates the estimate,
+//   saves the result, and returns the updated record.
+//
+// Full URL path: POST http://localhost:3000/api/vehicles/:id/estimate
+router.post('/vehicles/:id/estimate', estimateVehiclePrice);
 
 // PUT /vehicles/:id
 //
