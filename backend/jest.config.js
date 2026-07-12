@@ -47,5 +47,7 @@ module.exports = {
     'src/validators/**/*.js',
     'src/routes/**/*.js',
     'src/utils/**/*.js',
+    'src/middleware/**/*.js',
+    'src/errors/**/*.js',
   ],
 };

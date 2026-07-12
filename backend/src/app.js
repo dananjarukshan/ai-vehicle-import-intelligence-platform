@@ -286,6 +286,15 @@ app.use('/api/v1', vehicleRoutes);
 
 console.log('✅ Vehicle routes registered at /api/v1');
 
+// Import and register authentication routes
+// Provides: GET /api/v1/auth/me (returns authenticated user identity)
+// Authentication is applied per-route inside authRoutes.js, not globally,
+// so public routes like /health remain accessible without a token.
+const authRoutes = require('./routes/authRoutes');
+app.use('/api/v1', authRoutes);
+
+console.log('✅ Auth routes registered at /api/v1');
+
 // Example route to show API is working
 // In production, these would be in separate route files
 app.get(`${config.apiPrefix}/`, (request, response) => {

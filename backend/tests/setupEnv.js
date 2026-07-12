@@ -35,9 +35,9 @@ function setupTestEnvironment() {
   // Set dummy Supabase credentials (not real, just harmless values)
   // These prevent the app from crashing when loading config
   // but will not connect to any real database
-  process.env.SUPABASE_URL = 'https://test-supabase-url-placeholder.supabase.co';
-  process.env.SUPABASE_ANON_KEY = 'test-anon-key-not-real-just-for-loading';
-  process.env.SUPABASE_SERVICE_ROLE_KEY = 'test-service-role-key-not-real-just-for-loading';
+  process.env.SUPABASE_URL = 'https://test-project.supabase.co';
+  process.env.SUPABASE_ANON_KEY = 'test-anon-key';
+  process.env.SUPABASE_SERVICE_ROLE_KEY = 'test-service-role-key';
 
   // Set JWT secret (any value is fine for testing)
   process.env.JWT_SECRET = 'test-jwt-secret-for-testing-only';

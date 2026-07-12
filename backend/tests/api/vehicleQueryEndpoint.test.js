@@ -13,6 +13,19 @@
 // IMPORTANT: Mock BEFORE requiring the app
 jest.mock('../../src/services/vehicleService');
 
+// Mock the authenticate middleware so existing tests bypass token verification.
+// This simulates a fully authenticated admin user without needing a real Supabase token.
+jest.mock('../../src/middleware/authenticate', () =>
+  jest.fn((req, res, next) => {
+    req.auth = {
+      userId: 'test-admin-id',
+      email: 'admin@example.com',
+      role: 'admin',
+    };
+    next();
+  })
+);
+
 const request = require('supertest');
 const app = require('../../src/app');
 const { getAllVehicles } = require('../../src/services/vehicleService');
@@ -207,7 +220,8 @@ describe('Vehicle Query API Endpoint (GET /api/v1/vehicles)', () => {
 
     expect(response.status).toBe(500);
     expect(response.body.success).toBe(false);
-    expect(response.body.message).toContain('Database select failed.');
+    // The centralized errorHandler masks raw non-operational errors
+    expect(response.body.message).toBe('An unexpected error occurred.');
   });
 
   it('15. Empty results return 200 with an empty data array', async () => {

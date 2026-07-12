@@ -5,107 +5,118 @@
 //
 // PURPOSE:
 // This file defines the URL paths (endpoints) for all Vehicle-related requests.
+// Every vehicle route is protected by authentication and role-based authorization.
 //
-// WHAT IS A ROUTE / ROUTER?
-// A Router is like a directory or switchboard. When an HTTP request comes in, the 
-// router inspects the HTTP Method (GET, POST, etc.) and the Path (/vehicles) 
-// to decide which Controller function should handle the request.
+// PERMISSION MATRIX:
+// ┌────────────────────────────────┬────────┬─────────┬───────┐
+// │ Route                          │ viewer │ analyst │ admin │
+// ├────────────────────────────────┼────────┼─────────┼───────┤
+// │ GET  /vehicles                 │   ✓    │    ✓    │   ✓   │
+// │ GET  /vehicles/:id             │   ✓    │    ✓    │   ✓   │
+// │ POST /vehicles                 │   ✗    │    ✓    │   ✓   │
+// │ PUT  /vehicles/:id             │   ✗    │    ✓    │   ✓   │
+// │ POST /vehicles/:id/estimate    │   ✗    │    ✓    │   ✓   │
+// │ DELETE /vehicles/:id           │   ✗    │    ✗    │   ✓   │
+// └────────────────────────────────┴────────┴─────────┴───────┘
 //
-// WHY USE ROUTE FILES?
-// 1. Clean Organization: Groups endpoints by feature (e.g., all vehicle URLs in one place).
-// 2. High-level Overview: Anyone looking at this file can see all available endpoints at a glance.
-// 3. Delegation: The router has NO logic. It only says "if request matches this URL, call this controller".
+// MIDDLEWARE ORDER ON EACH ROUTE:
+// 1. authenticate   — verifies the Bearer token, attaches req.auth
+// 2. authorizeRoles — checks req.auth.role against the allowed list
+// 3. controller     — runs the actual business logic
 //
+// ROUTE ORDER NOTE:
+// Express matches routes in order. The specific route '/vehicles/:id/estimate'
+// must be registered BEFORE the generic '/vehicles/:id' route to prevent
+// Express from treating 'estimate' as an :id value.
 // ============================================================================
 
-// Import Express to access its Router module.
 const express = require('express');
-
-// Create a new router instance.
-// This is a mini Express application that will group our vehicle routes.
 const router = express.Router();
 
-// Import the vehicle controller handlers that will process the requests.
+// Import vehicle controller handlers
 const vehicleController = require('../controllers/vehicleController');
 
-// Import the price estimation controller for the new estimate endpoint.
+// Import price estimation controller
 const { estimateVehiclePrice } = require('../controllers/priceEstimationController');
 
+// Import authentication and authorization middleware
+const authenticate = require('../middleware/authenticate');
+const authorizeRoles = require('../middleware/authorizeRoles');
+
 // ============================================================================
-// DEFINE ENDPOINTS
+// ROLE CONSTANTS
+// ============================================================================
+// Grouping roles into constants avoids typos and makes the permission
+// matrix easy to understand at a glance.
+
+// These roles can READ vehicle data
+const READ_ROLES = ['viewer', 'analyst', 'admin'];
+
+// These roles can CREATE, UPDATE, or ESTIMATE vehicles
+const WRITE_ROLES = ['analyst', 'admin'];
+
+// Only admins can permanently DELETE records
+const DELETE_ROLES = ['admin'];
+
+// ============================================================================
+// DEFINE PROTECTED ENDPOINTS
 // ============================================================================
 
-// GET /vehicles
-//
-// HOW THIS WORKS:
-// - `router.get`: Tells Express to listen only for HTTP GET requests.
-// - `'/vehicles'`: The path we are listening on.
-// - `vehicleController.getVehicles`: The function that runs when a user hits this endpoint.
-//
-// Note: In app.js, this router is registered under the prefix '/api'.
-// This means the full URL path will be: GET http://localhost:3000/api/vehicles
-router.get('/vehicles', vehicleController.getVehicles);
+// GET /vehicles  —  List all vehicles (with optional filtering/pagination)
+// Allowed: viewer, analyst, admin
+router.get(
+  '/vehicles',
+  authenticate,
+  authorizeRoles(...READ_ROLES),
+  vehicleController.getVehicles
+);
 
-// GET /vehicles/:id
-//
-// HOW THIS WORKS:
-// - `router.get`: Configures this path to respond only to GET requests.
-// - `'/vehicles/:id'`: Uses a colon (:id) to define a route parameter named 'id'.
-//   Express will parse whatever value is provided at this position in the path 
-//   and place it in `req.params.id`.
-// - `vehicleController.getVehicle`: Registers our controller function as the handler.
-//
-// Full URL path: GET http://localhost:3000/api/vehicles/:id
-router.get('/vehicles/:id', vehicleController.getVehicle);
+// POST /vehicles/:id/estimate  —  Calculate and save price estimate
+// IMPORTANT: This MUST come before GET /vehicles/:id
+// Otherwise Express would match 'estimate' as the :id parameter.
+// Allowed: analyst, admin
+router.post(
+  '/vehicles/:id/estimate',
+  authenticate,
+  authorizeRoles(...WRITE_ROLES),
+  estimateVehiclePrice
+);
 
-// POST /vehicles
-//
-// HOW THIS WORKS:
-// - `router.post`: Tells Express to listen only for HTTP POST requests.
-// - `'/vehicles'`: The path we are listening on for creating a new vehicle.
-// - `vehicleController.createVehicleRecord`: The function that runs when a user hits this endpoint.
-//
-// Full URL path: POST http://localhost:3000/api/vehicles
-router.post('/vehicles', vehicleController.createVehicleRecord);
+// GET /vehicles/:id  —  Fetch a single vehicle by ID
+// Allowed: viewer, analyst, admin
+router.get(
+  '/vehicles/:id',
+  authenticate,
+  authorizeRoles(...READ_ROLES),
+  vehicleController.getVehicle
+);
 
-// POST /vehicles/:id/estimate
-//
-// HOW THIS WORKS:
-// - `router.post`: This endpoint runs a calculation and saves the result.
-// - `'/vehicles/:id/estimate'`: The `:id` parameter tells Express which vehicle to estimate.
-// - `estimateVehiclePrice`: The controller loads the vehicle, calculates the estimate,
-//   saves the result, and returns the updated record.
-//
-// Full URL path: POST http://localhost:3000/api/vehicles/:id/estimate
-router.post('/vehicles/:id/estimate', estimateVehiclePrice);
+// POST /vehicles  —  Create a new vehicle record
+// Allowed: analyst, admin
+router.post(
+  '/vehicles',
+  authenticate,
+  authorizeRoles(...WRITE_ROLES),
+  vehicleController.createVehicleRecord
+);
 
-// PUT /vehicles/:id
-//
-// HOW THIS WORKS:
-// - `router.put`: Tells Express to listen only for HTTP PUT requests.
-// - `'/vehicles/:id'`: Uses a colon (:id) to define a route parameter named 'id'.
-//   Express will parse whatever value is provided at this position in the path 
-//   and place it in `req.params.id`.
-// - `vehicleController.updateVehicleRecord`: Registers our controller function as the handler.
-//
-// Full URL path: PUT http://localhost:3000/api/vehicles/:id
-router.put('/vehicles/:id', vehicleController.updateVehicleRecord);
+// PUT /vehicles/:id  —  Update an existing vehicle record
+// Allowed: analyst, admin
+router.put(
+  '/vehicles/:id',
+  authenticate,
+  authorizeRoles(...WRITE_ROLES),
+  vehicleController.updateVehicleRecord
+);
 
-// DELETE /vehicles/:id
-//
-// HOW THIS WORKS:
-// - `router.delete`: Tells Express to listen only for HTTP DELETE requests.
-// - `'/vehicles/:id'`: Uses a colon (:id) to define a route parameter named 'id'.
-//   Express will parse whatever value is provided at this position in the path 
-//   and place it in `req.params.id`.
-// - `vehicleController.deleteVehicleRecord`: Registers our controller function as the handler.
-//
-// Full URL path: DELETE http://localhost:3000/api/vehicles/:id
-router.delete('/vehicles/:id', vehicleController.deleteVehicleRecord);
+// DELETE /vehicles/:id  —  Permanently delete a vehicle record
+// Allowed: admin only
+router.delete(
+  '/vehicles/:id',
+  authenticate,
+  authorizeRoles(...DELETE_ROLES),
+  vehicleController.deleteVehicleRecord
+);
 
-// Export the router so it can be registered (mounted) in the main app.js file.
+// Export the router so it can be mounted in app.js
 module.exports = router;
-
-
-
-

@@ -24,6 +24,19 @@
 // IMPORTANT: Mock BEFORE requiring the app
 jest.mock('../../src/services/vehicleService');
 
+// Mock the authenticate middleware so existing tests bypass token verification.
+// This simulates a fully authenticated admin user without needing a real Supabase token.
+jest.mock('../../src/middleware/authenticate', () =>
+  jest.fn((req, res, next) => {
+    req.auth = {
+      userId: 'test-admin-id',
+      email: 'admin@example.com',
+      role: 'admin',
+    };
+    next();
+  })
+);
+
 const request = require('supertest');
 const app = require('../../src/app');
 const { getVehicleById, updateVehicle } = require('../../src/services/vehicleService');

@@ -15,6 +15,21 @@
 // IMPORTANT: Mock BEFORE requiring the app
 jest.mock('../../src/services/vehicleService');
 
+// Mock the authenticate middleware so existing tests bypass token verification.
+// This simulates a fully authenticated admin user without needing a real Supabase token.
+// The real authorizeRoles logic still runs — routes that need 'admin' will pass
+// because we set role: 'admin' on req.auth.
+jest.mock('../../src/middleware/authenticate', () =>
+  jest.fn((req, res, next) => {
+    req.auth = {
+      userId: 'test-admin-id',
+      email: 'admin@example.com',
+      role: 'admin',
+    };
+    next();
+  })
+);
+
 const request = require('supertest');
 const app = require('../../src/app');
 const {
@@ -104,7 +119,8 @@ describe('Vehicle CRUD API Endpoints', () => {
 
       expect(response.status).toBe(500);
       expect(response.body.success).toBe(false);
-      expect(response.body.message).toContain('Database error occurred.');
+      // The centralized errorHandler masks raw non-operational errors
+      expect(response.body.message).toBe('An unexpected error occurred.');
     });
   });
 
@@ -307,7 +323,9 @@ describe('Vehicle CRUD API Endpoints', () => {
 
       expect(response.status).toBe(500);
       expect(response.body.success).toBe(false);
-      expect(response.body.message).toContain('Insert failed in service.');
+      // The centralized errorHandler masks raw non-operational errors in test/production
+      // to avoid leaking internal implementation details.
+      expect(response.body.message).toBe('An unexpected error occurred.');
     });
   });
 
@@ -446,7 +464,8 @@ describe('Vehicle CRUD API Endpoints', () => {
 
       expect(response.status).toBe(500);
       expect(response.body.success).toBe(false);
-      expect(response.body.message).toContain('Update failed.');
+      // The centralized errorHandler masks raw non-operational errors
+      expect(response.body.message).toBe('An unexpected error occurred.');
     });
   });
 
@@ -503,7 +522,8 @@ describe('Vehicle CRUD API Endpoints', () => {
 
       expect(response.status).toBe(500);
       expect(response.body.success).toBe(false);
-      expect(response.body.message).toContain('Delete failed in service.');
+      // The centralized errorHandler masks raw non-operational errors
+      expect(response.body.message).toBe('An unexpected error occurred.');
     });
   });
 });

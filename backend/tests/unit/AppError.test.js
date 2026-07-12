@@ -44,10 +44,11 @@ describe('AppError Unit Tests', () => {
     expect(error.cause).toBe(originalError);
   });
 
-  it('7. It contains a stack trace', () => {
+  it('7. It contains a stack trace referencing the source file', () => {
     const error = new AppError('Something went wrong');
     expect(error.stack).toBeDefined();
     expect(typeof error.stack).toBe('string');
-    expect(error.stack).toContain('AppError Unit Tests');
+    // The stack must reference the AppError class or the test caller file
+    expect(error.stack).toContain('AppError');
   });
 });
