@@ -18,25 +18,22 @@ const { calculateVehicleEstimate } = require('../services/priceEstimationService
 // Import the validator that cleans and checks the estimate options.
 const { validateEstimateOptions } = require('../validators/estimateValidator');
 
-// Import the reusable response helpers so the endpoint uses the same response format as the rest of the API.
-const { sendSuccess, sendError } = require('../utils/apiResponse');
+// Import the reusable response helpers.
+const { sendSuccess } = require('../utils/apiResponse');
+
+// Import the custom operational error class.
+const AppError = require('../errors/AppError');
 
 /**
  * POST /api/v1/vehicles/:id/estimate
  *
  * This endpoint estimates the import cost and selling price for a vehicle.
  *
- * Flow:
- * 1. Validate the request body.
- * 2. Load the vehicle by ID.
- * 3. Run the calculation.
- * 4. Save the calculated prices to the database.
- * 5. Return the updated vehicle and the calculation breakdown.
- *
  * @param {express.Request} req - The Express request object.
  * @param {express.Response} res - The Express response object.
+ * @param {express.NextFunction} next - The Express Next callback.
  */
-async function estimateVehiclePrice(req, res) {
+async function estimateVehiclePrice(req, res, next) {
   try {
     // 1. Read the vehicle ID from the route parameter.
     const { id } = req.params;
@@ -46,15 +43,15 @@ async function estimateVehiclePrice(req, res) {
 
     // 3. Stop immediately if the input is invalid.
     if (!isValid) {
-      return sendError(res, 400, 'Validation failed. Please correct the errors and try again.', errors);
+      throw new AppError('Validation failed. Please correct the errors and try again.', 400, 'VALIDATION_ERROR', errors);
     }
 
     // 4. Load the vehicle from the database.
     const vehicle = await getVehicleById(id);
 
-    // 5. If the vehicle does not exist, return a 404 response.
+    // 5. If the vehicle does not exist, throw a 404 AppError.
     if (!vehicle) {
-      return sendError(res, 404, `Vehicle with ID ${id} not found.`);
+      throw new AppError(`Vehicle with ID ${id} not found.`, 404, 'VEHICLE_NOT_FOUND');
     }
 
     // 6. Calculate the estimate using the stored vehicle data and the validated options.
@@ -75,8 +72,7 @@ async function estimateVehiclePrice(req, res) {
       estimateResult.breakdown
     );
   } catch (error) {
-    console.error(`Error caught in estimateVehiclePrice controller for ID ${req.params?.id}:`, error);
-    return sendError(res, 500, error.message || 'An unexpected error occurred while estimating the vehicle price.');
+    next(error);
   }
 }
 

@@ -312,15 +312,8 @@ console.log('✅ Welcome route registered');
 // This section catches errors and sends appropriate responses
 
 // Import error handling middleware
-const { 
-  errorHandler, 
-  validationErrorHandler,
-  notFoundHandler 
-} = require('./middleware/errorHandler');
-
-// Validation error handler (runs before general error handler)
-// Catches specific validation errors
-app.use(validationErrorHandler);
+const { errorHandler } = require('./middleware/errorHandler');
+const notFoundHandler = require('./middleware/notFoundHandler');
 
 // 404 Not Found Handler
 // This runs if no route matched the request
@@ -329,7 +322,7 @@ app.use(notFoundHandler);
 
 // General error handler
 // IMPORTANT: Must be LAST middleware
-// Has 4 parameters (error, req, res, next) so Express knows it's error handler
+// Has 4 parameters (err, req, res, next) so Express knows it's error handler
 app.use(errorHandler);
 
 console.log('✅ Error handling middleware configured');
