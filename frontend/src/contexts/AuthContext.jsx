@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { apiRequest } from '../services/apiClient'
 import {
   getSession,
@@ -6,8 +6,7 @@ import {
   signOut,
   subscribeToAuthChanges,
 } from '../services/authService'
-
-const AuthContext = createContext(null)
+import { AuthContext } from './AuthContextDefinition'
 
 /** Provide Supabase session state and the backend-authoritative user profile. */
 export function AuthProvider({ children }) {

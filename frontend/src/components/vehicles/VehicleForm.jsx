@@ -32,8 +32,9 @@ const labels = {
 
 /** Convert a vehicle record into controlled form string values. */
 function createFormValues(vehicle = {}) {
+  const sourceVehicle = vehicle ?? {}
   return FIELD_NAMES.reduce((values, field) => {
-    values[field] = vehicle[field] ?? ''
+    values[field] = sourceVehicle[field] ?? ''
     return values
   }, {})
 }
