@@ -3,8 +3,8 @@ import { useAuth } from '../../contexts/AuthContext'
 
 const roleActions = {
   viewer: ['Read vehicle records'],
-  analyst: ['Add vehicle (coming soon)', 'Estimate price (coming soon)'],
-  admin: ['Add vehicle (coming soon)', 'Estimate price (coming soon)', 'Administration (coming soon)'],
+  analyst: ['Create and edit vehicles', 'Run price estimates'],
+  admin: ['Create and edit vehicles', 'Run price estimates', 'Delete vehicle records'],
 }
 
 /** Main navigation plus role-aware previews of future actions. */
