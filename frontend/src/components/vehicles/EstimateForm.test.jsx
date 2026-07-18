@@ -25,7 +25,7 @@ describe('EstimateForm', () => {
   it('allows an empty form so backend defaults can be used', async () => {
     const user = userEvent.setup()
     render(<EstimateForm vehicle={mockVehicle} onSubmit={onSubmit} onCancel={onCancel} />)
-    await user.click(screen.getByRole('button', { name: /calculate estimate/i }))
+    await user.click(screen.getByRole('button', { name: /run estimate/i }))
     await waitFor(() => expect(onSubmit).toHaveBeenCalledWith({}))
   })
 
@@ -35,7 +35,7 @@ describe('EstimateForm', () => {
     await user.type(screen.getByLabelText('Exchange rate'), '1.25')
     await user.type(screen.getByLabelText('Freight cost'), '5000')
     await user.type(screen.getByLabelText('Duty rate'), '0.18')
-    await user.click(screen.getByRole('button', { name: /calculate estimate/i }))
+    await user.click(screen.getByRole('button', { name: /run estimate/i }))
     await waitFor(() => expect(onSubmit).toHaveBeenCalledWith({
       exchange_rate: 1.25,
       freight_cost: 5000,
@@ -47,7 +47,7 @@ describe('EstimateForm', () => {
     const user = userEvent.setup()
     render(<EstimateForm vehicle={mockVehicle} onSubmit={onSubmit} onCancel={onCancel} />)
     await user.type(screen.getByLabelText('Freight cost'), '-10')
-    await user.click(screen.getByRole('button', { name: /calculate estimate/i }))
+    await user.click(screen.getByRole('button', { name: /run estimate/i }))
     expect(screen.getByText('Freight cost cannot be negative.')).toBeInTheDocument()
     expect(onSubmit).not.toHaveBeenCalled()
   })
@@ -56,7 +56,7 @@ describe('EstimateForm', () => {
     const user = userEvent.setup()
     render(<EstimateForm vehicle={mockVehicle} onSubmit={onSubmit} onCancel={onCancel} />)
     await user.type(screen.getByLabelText('Exchange rate'), '0')
-    await user.click(screen.getByRole('button', { name: /calculate estimate/i }))
+    await user.click(screen.getByRole('button', { name: /run estimate/i }))
     expect(screen.getByText('Exchange rate must be greater than zero.')).toBeInTheDocument()
     expect(onSubmit).not.toHaveBeenCalled()
   })

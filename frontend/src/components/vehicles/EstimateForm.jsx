@@ -11,6 +11,19 @@ const estimateFields = [
   { name: 'other_costs', label: 'Other costs' },
 ]
 
+const estimateFieldGroups = [
+  {
+    title: 'Conversion and landing costs',
+    description: 'Leave fields blank to use the backend calculation defaults.',
+    fields: ['exchange_rate', 'freight_cost', 'insurance_cost', 'clearance_cost', 'other_costs'],
+  },
+  {
+    title: 'Rates and profitability',
+    description: 'Enter rates as decimals; for example, 0.18 represents 18%.',
+    fields: ['duty_rate', 'vat_rate', 'profit_margin_rate'],
+  },
+]
+
 const initialValues = estimateFields.reduce((values, field) => ({ ...values, [field.name]: '' }), {})
 
 /** Format one calculation result without assuming a currency. */
@@ -79,30 +92,39 @@ export default function EstimateForm({ vehicle, onSubmit, onCancel, loading = fa
         </div>
       )}
 
-      <div className="form-grid">
-        {estimateFields.map(({ name, label, hint }) => (
-          <div className="form-field" key={name}>
-            <label htmlFor={`estimate-${name}`}>{label}</label>
-            <input
-              id={`estimate-${name}`}
-              name={name}
-              type="number"
-              min={name === 'exchange_rate' ? '0.000001' : 0}
-              step="any"
-              value={values[name]}
-              onChange={handleChange}
-              disabled={loading}
-              aria-invalid={Boolean(clientErrors[name])}
-              aria-describedby={clientErrors[name] || hint ? `estimate-${name}-help` : undefined}
-            />
-            {(clientErrors[name] || hint) && (
-              <span className={clientErrors[name] ? 'field-error' : 'field-hint'} id={`estimate-${name}-help`}>
-                {clientErrors[name] || hint}
-              </span>
-            )}
+      {estimateFieldGroups.map((group) => (
+        <fieldset className="form-section" key={group.title}>
+          <legend>{group.title}</legend>
+          <p className="form-section__description">{group.description}</p>
+          <div className="form-grid">
+            {group.fields.map((name) => {
+              const { label, hint } = estimateFields.find((field) => field.name === name)
+              return (
+                <div className="form-field" key={name}>
+                  <label htmlFor={`estimate-${name}`}>{label}</label>
+                  <input
+                    id={`estimate-${name}`}
+                    name={name}
+                    type="number"
+                    min={name === 'exchange_rate' ? '0.000001' : 0}
+                    step="any"
+                    value={values[name]}
+                    onChange={handleChange}
+                    disabled={loading}
+                    aria-invalid={Boolean(clientErrors[name])}
+                    aria-describedby={clientErrors[name] || hint ? `estimate-${name}-help` : undefined}
+                  />
+                  {(clientErrors[name] || hint) && (
+                    <span className={clientErrors[name] ? 'field-error' : 'field-hint'} id={`estimate-${name}-help`}>
+                      {clientErrors[name] || hint}
+                    </span>
+                  )}
+                </div>
+              )
+            })}
           </div>
-        ))}
-      </div>
+        </fieldset>
+      ))}
 
       {breakdown && updatedVehicle && (
         <section className="estimate-summary" aria-live="polite">
@@ -127,7 +149,7 @@ export default function EstimateForm({ vehicle, onSubmit, onCancel, loading = fa
           {result ? 'Close' : 'Cancel'}
         </button>
         <button className="button button--primary" type="submit" disabled={loading}>
-          {loading ? 'Calculating…' : result ? 'Recalculate' : 'Calculate estimate'}
+          {loading ? 'Calculating…' : 'Run Estimate'}
         </button>
       </div>
     </form>

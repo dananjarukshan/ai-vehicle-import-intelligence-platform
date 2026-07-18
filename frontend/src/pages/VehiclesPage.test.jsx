@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useAuth } from '../contexts/AuthContext'
@@ -105,7 +105,7 @@ describe('VehiclesPage', () => {
   it('shows read-only controls for a viewer', async () => {
     await renderLoadedPage('viewer')
     expect(screen.getByText('Read-only access')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /add vehicle/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /create vehicle/i })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /edit/i })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /estimate/i })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /delete/i })).not.toBeInTheDocument()
@@ -113,7 +113,7 @@ describe('VehiclesPage', () => {
 
   it('shows Add, Edit, and Estimate but not Delete for an analyst', async () => {
     await renderLoadedPage('analyst')
-    expect(screen.getByRole('button', { name: /add vehicle/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /create vehicle/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /edit toyota prius/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /estimate price for toyota prius/i })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /delete/i })).not.toBeInTheDocument()
@@ -121,7 +121,7 @@ describe('VehiclesPage', () => {
 
   it('shows every management control for an admin', async () => {
     await renderLoadedPage('admin')
-    expect(screen.getByRole('button', { name: /add vehicle/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /create vehicle/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /edit/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /estimate/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /delete toyota prius/i })).toBeInTheDocument()
@@ -130,10 +130,10 @@ describe('VehiclesPage', () => {
   it('opens the create modal and completes a successful create', async () => {
     const user = userEvent.setup()
     await renderLoadedPage('analyst')
-    await user.click(screen.getByRole('button', { name: /add vehicle/i }))
-    expect(screen.getByRole('dialog', { name: 'Add vehicle' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /create vehicle/i }))
+    const dialog = screen.getByRole('dialog', { name: 'Create Vehicle' })
     await fillRequiredVehicleFields(user)
-    await user.click(screen.getByRole('button', { name: 'Create vehicle' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Create Vehicle' }))
     await waitFor(() => expect(createVehicle).toHaveBeenCalledWith({ make: 'Honda', model: 'Vezel', year: 2021 }))
     await waitFor(() => expect(getVehicles).toHaveBeenCalledTimes(2))
     expect(screen.getByRole('status')).toHaveTextContent('Operation completed.')
@@ -144,9 +144,10 @@ describe('VehiclesPage', () => {
     createVehicle.mockRejectedValue(error)
     const user = userEvent.setup()
     await renderLoadedPage('analyst')
-    await user.click(screen.getByRole('button', { name: /add vehicle/i }))
+    await user.click(screen.getByRole('button', { name: /create vehicle/i }))
+    const dialog = screen.getByRole('dialog', { name: 'Create Vehicle' })
     await fillRequiredVehicleFields(user)
-    await user.click(screen.getByRole('button', { name: 'Create vehicle' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Create Vehicle' }))
     expect(await screen.findByRole('alert')).toHaveTextContent("model: 'model' is required.")
   })
 
@@ -154,11 +155,11 @@ describe('VehiclesPage', () => {
     const user = userEvent.setup()
     await renderLoadedPage('analyst')
     await user.click(screen.getByRole('button', { name: /edit toyota prius/i }))
-    expect(screen.getByRole('dialog', { name: 'Edit vehicle' })).toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: 'Edit Vehicle' })).toBeInTheDocument()
     const mileage = screen.getByLabelText(/Mileage/)
     await user.clear(mileage)
     await user.type(mileage, '90000')
-    await user.click(screen.getByRole('button', { name: 'Save changes' }))
+    await user.click(screen.getByRole('button', { name: 'Save Changes' }))
     await waitFor(() => expect(updateVehicle).toHaveBeenCalledWith(
       mockVehicle.id,
       expect.objectContaining({ mileage: 90000 }),
@@ -170,8 +171,8 @@ describe('VehiclesPage', () => {
     const user = userEvent.setup()
     await renderLoadedPage('analyst')
     await user.click(screen.getByRole('button', { name: /estimate price for toyota prius/i }))
-    expect(screen.getByRole('dialog', { name: 'Estimate vehicle price' })).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Calculate estimate' }))
+    expect(screen.getByRole('dialog', { name: 'Run Estimate' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Run Estimate' }))
     await waitFor(() => expect(estimateVehiclePrice).toHaveBeenCalledWith(mockVehicle.id, {}))
     expect(await screen.findByText('Estimate calculated')).toBeInTheDocument()
     await waitFor(() => expect(getVehicles).toHaveBeenCalledTimes(2))
@@ -181,9 +182,9 @@ describe('VehiclesPage', () => {
     const user = userEvent.setup()
     await renderLoadedPage('admin')
     await user.click(screen.getByRole('button', { name: /delete toyota prius/i }))
-    expect(screen.getByRole('dialog', { name: 'Delete vehicle' })).toHaveTextContent('Toyota Prius')
+    expect(screen.getByRole('dialog', { name: 'Delete Vehicle' })).toHaveTextContent('Toyota Prius')
     expect(deleteVehicle).not.toHaveBeenCalled()
-    await user.click(screen.getByRole('button', { name: 'Delete vehicle' }))
+    await user.click(screen.getByRole('button', { name: 'Delete Vehicle' }))
     await waitFor(() => expect(deleteVehicle).toHaveBeenCalledWith(mockVehicle.id))
     await waitFor(() => expect(getVehicles).toHaveBeenCalledTimes(2))
   })
@@ -195,9 +196,10 @@ describe('VehiclesPage', () => {
     createVehicle.mockRejectedValue(Object.assign(new Error(message), { status }))
     const user = userEvent.setup()
     await renderLoadedPage('analyst')
-    await user.click(screen.getByRole('button', { name: /add vehicle/i }))
+    await user.click(screen.getByRole('button', { name: /create vehicle/i }))
+    const dialog = screen.getByRole('dialog', { name: 'Create Vehicle' })
     await fillRequiredVehicleFields(user)
-    await user.click(screen.getByRole('button', { name: 'Create vehicle' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Create Vehicle' }))
     expect(await screen.findByRole('alert')).toHaveTextContent(message)
     expect(screen.queryByText(/access.?token/i)).not.toBeInTheDocument()
   })
@@ -233,7 +235,7 @@ describe('VehiclesPage', () => {
     await user.click(screen.getByRole('button', { name: 'Next' }))
     await waitFor(() => expect(getVehicles).toHaveBeenCalledWith({ page: 2, limit: 10 }))
     await user.click(screen.getByRole('button', { name: /delete toyota prius/i }))
-    await user.click(screen.getByRole('button', { name: 'Delete vehicle' }))
+    await user.click(screen.getByRole('button', { name: 'Delete Vehicle' }))
     await waitFor(() => expect(getVehicles).toHaveBeenCalledWith({ page: 1, limit: 10 }))
   })
 })

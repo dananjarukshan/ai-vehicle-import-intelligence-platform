@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router'
 import ErrorMessage from '../components/common/ErrorMessage'
+import DynamicCarBackground from '../components/common/DynamicCarBackground'
 import { useAuth } from '../contexts/AuthContext'
 
 /** Email/password sign-in page backed exclusively by Supabase Auth. */
@@ -40,6 +41,7 @@ export default function LoginPage() {
 
   return (
     <main className="login-page">
+      <DynamicCarBackground variant="login" />
       <section className="login-intro" aria-label="Application introduction">
         <div className="brand-mark" aria-hidden="true">AV</div>
         <p className="eyebrow">AI-powered import decisions</p>

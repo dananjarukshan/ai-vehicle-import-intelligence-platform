@@ -129,9 +129,7 @@ const corsOptions = {
   // - Array of allowed origins (most secure)
   // - Function that checks if origin is allowed
   // - '*' (allow everyone - only for public APIs)
-  origin: Array.isArray(config.corsOrigin) 
-    ? config.corsOrigin 
-    : [config.corsOrigin],
+  origin: config.corsOrigin,
   
   // Whether to allow cookies/authorization headers
   // Needed if frontend needs to send authentication

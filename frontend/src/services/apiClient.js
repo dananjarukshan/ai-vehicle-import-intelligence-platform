@@ -1,6 +1,5 @@
 import { getSession, signOut } from './authService'
-
-const apiBaseUrl = import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, '')
+import { env } from '../config/env'
 
 /** An API error with safe HTTP and backend details for the UI. */
 export class ApiError extends Error {
@@ -18,12 +17,6 @@ export class ApiError extends Error {
  * The current token is read from Supabase for every request and is never logged.
  */
 export async function apiRequest(path, options = {}) {
-  if (!apiBaseUrl) {
-    throw new ApiError('The API URL is not configured.', {
-      code: 'API_CONFIGURATION_ERROR',
-    })
-  }
-
   const { data, error: sessionError } = await getSession()
   const accessToken = data?.session?.access_token
 
@@ -47,7 +40,7 @@ export async function apiRequest(path, options = {}) {
 
   let response
   try {
-    response = await fetch(`${apiBaseUrl}${path}`, {
+    response = await fetch(`${env.apiBaseUrl}${path}`, {
       ...fetchOptions,
       headers,
       body: requestBody,

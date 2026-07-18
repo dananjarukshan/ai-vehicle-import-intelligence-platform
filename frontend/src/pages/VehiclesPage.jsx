@@ -169,7 +169,7 @@ export default function VehiclesPage() {
         <div className="action-toolbar">
           {canWrite && (
             <button className="button button--primary" type="button" onClick={() => openModal('create')}>
-              Add vehicle
+              Create Vehicle
             </button>
           )}
         </div>
@@ -213,17 +213,17 @@ export default function VehiclesPage() {
         )}
       </section>
 
-      <Modal isOpen={activeModal === 'create'} title="Add vehicle" onClose={closeModal} closeDisabled={mutationLoading} size="large">
+      <Modal isOpen={activeModal === 'create'} title="Create Vehicle" onClose={closeModal} closeDisabled={mutationLoading} size="large">
         <VehicleForm mode="create" onSubmit={handleCreate} onCancel={closeModal} loading={mutationLoading} serverErrors={mutationErrors} />
       </Modal>
 
-      <Modal isOpen={activeModal === 'edit'} title="Edit vehicle" onClose={closeModal} closeDisabled={mutationLoading} size="large">
+      <Modal isOpen={activeModal === 'edit'} title="Edit Vehicle" onClose={closeModal} closeDisabled={mutationLoading} size="large">
         {selectedVehicle && (
           <VehicleForm mode="edit" initialVehicle={selectedVehicle} onSubmit={handleUpdate} onCancel={closeModal} loading={mutationLoading} serverErrors={mutationErrors} />
         )}
       </Modal>
 
-      <Modal isOpen={activeModal === 'estimate'} title="Estimate vehicle price" onClose={closeModal} closeDisabled={mutationLoading} size="large">
+      <Modal isOpen={activeModal === 'estimate'} title="Run Estimate" onClose={closeModal} closeDisabled={mutationLoading} size="large">
         {selectedVehicle && (
           <EstimateForm vehicle={selectedVehicle} onSubmit={handleEstimate} onCancel={closeModal} loading={mutationLoading} serverErrors={mutationErrors} result={estimateResult} />
         )}
@@ -231,9 +231,9 @@ export default function VehiclesPage() {
 
       <ConfirmDialog
         isOpen={activeModal === 'delete'}
-        title="Delete vehicle"
+        title="Delete Vehicle"
         message={selectedVehicle ? `Permanently delete ${selectedVehicle.make} ${selectedVehicle.model}? This action cannot be undone.` : ''}
-        confirmLabel="Delete vehicle"
+        confirmLabel="Delete Vehicle"
         loading={mutationLoading}
         onConfirm={handleDelete}
         onCancel={closeModal}

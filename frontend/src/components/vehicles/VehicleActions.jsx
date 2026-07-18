@@ -13,7 +13,7 @@ export default function VehicleActions({ vehicle, role, onEdit, onEstimate, onDe
         Edit
       </button>
       <button className="table-action" type="button" onClick={() => onEstimate(vehicle)} aria-label={`Estimate price for ${vehicleName}`}>
-        Estimate
+        Run Estimate
       </button>
       {role === 'admin' && (
         <button className="table-action table-action--danger" type="button" onClick={() => onDelete(vehicle)} aria-label={`Delete ${vehicleName}`}>
