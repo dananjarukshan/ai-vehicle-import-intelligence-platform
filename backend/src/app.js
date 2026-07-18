@@ -129,9 +129,7 @@ const corsOptions = {
   // - Array of allowed origins (most secure)
   // - Function that checks if origin is allowed
   // - '*' (allow everyone - only for public APIs)
-  origin: Array.isArray(config.corsOrigin) 
-    ? config.corsOrigin 
-    : [config.corsOrigin],
+  origin: config.corsOrigin,
   
   // Whether to allow cookies/authorization headers
   // Needed if frontend needs to send authentication
@@ -276,7 +274,24 @@ console.log('✅ Security headers configured');
 // PUT /api/v1/vehicles/123 → Update vehicle with ID 123
 // DELETE /api/v1/vehicles/123 → Delete vehicle with ID 123
 //
-// These will be added here when we build controllers
+// Import vehicle routes
+const vehicleRoutes = require('./routes/vehicleRoutes');
+// Register vehicle routes under '/api/v1' prefix (giving us /api/v1/vehicles)
+// WHY /api/v1?
+// Adding a version number (v1) to the URL lets us release a /api/v2 in the future
+// without breaking existing clients that still use /api/v1. This is standard practice.
+app.use('/api/v1', vehicleRoutes);
+
+console.log('✅ Vehicle routes registered at /api/v1');
+
+// Import and register authentication routes
+// Provides: GET /api/v1/auth/me (returns authenticated user identity)
+// Authentication is applied per-route inside authRoutes.js, not globally,
+// so public routes like /health remain accessible without a token.
+const authRoutes = require('./routes/authRoutes');
+app.use('/api/v1', authRoutes);
+
+console.log('✅ Auth routes registered at /api/v1');
 
 // Example route to show API is working
 // In production, these would be in separate route files
@@ -304,15 +319,8 @@ console.log('✅ Welcome route registered');
 // This section catches errors and sends appropriate responses
 
 // Import error handling middleware
-const { 
-  errorHandler, 
-  validationErrorHandler,
-  notFoundHandler 
-} = require('./middleware/errorHandler');
-
-// Validation error handler (runs before general error handler)
-// Catches specific validation errors
-app.use(validationErrorHandler);
+const { errorHandler } = require('./middleware/errorHandler');
+const notFoundHandler = require('./middleware/notFoundHandler');
 
 // 404 Not Found Handler
 // This runs if no route matched the request
@@ -321,7 +329,7 @@ app.use(notFoundHandler);
 
 // General error handler
 // IMPORTANT: Must be LAST middleware
-// Has 4 parameters (error, req, res, next) so Express knows it's error handler
+// Has 4 parameters (err, req, res, next) so Express knows it's error handler
 app.use(errorHandler);
 
 console.log('✅ Error handling middleware configured');

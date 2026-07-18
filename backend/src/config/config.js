@@ -23,6 +23,22 @@
 // process.env is Node.js's built-in object that stores environment variables
 require('dotenv').config();
 
+const developmentCorsOrigins = [
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+];
+
+function getCorsOrigins() {
+  if (process.env.CORS_ORIGIN) {
+    return process.env.CORS_ORIGIN
+      .split(',')
+      .map(origin => origin.trim().replace(/\/$/, ''))
+      .filter(Boolean);
+  }
+
+  return process.env.NODE_ENV === 'production' ? [] : developmentCorsOrigins;
+}
+
 // ============================================================================
 // CONFIGURATION OBJECT
 // ============================================================================
@@ -127,11 +143,7 @@ const config = {
   // List of allowed origins (websites that can call our API)
   // In development: allow localhost and testing URLs
   // In production: only allow your actual frontend domain
-  corsOrigin: process.env.CORS_ORIGIN || [
-    'http://localhost:3000',      // Frontend during development
-    'http://localhost:5173',      // Vite dev server
-    'http://127.0.0.1:3000',      // Alternative localhost
-  ],
+  corsOrigin: getCorsOrigins(),
 
   // ========================================================================
   // REQUEST SETTINGS
@@ -169,6 +181,11 @@ function validateConfig() {
   if (config.isProduction && config.jwtSecret === 'change-me-in-production-with-a-long-random-string') {
     console.warn('⚠️  WARNING: Using default JWT secret in production!');
     console.warn('Set JWT_SECRET environment variable to a long random string');
+  }
+
+  if (config.isProduction && config.corsOrigin.length === 0) {
+    console.error('CONFIGURATION ERROR: CORS_ORIGIN is required in production.');
+    process.exit(1);
   }
   
   console.log('✅ Configuration validated successfully');
