@@ -16,7 +16,7 @@
 // - Timestamp (when was server started?)
 //
 // EXAMPLE RESPONSES:
-// GET /health → { ok: true, timestamp: "2024-01-15T10:30:00.000Z" }
+// GET /health → { status: "healthy", ok: true, timestamp: "2024-01-15T10:30:00.000Z" }
 // GET /api/v1/health/detailed → { ok: true, uptime: 3600000, ... }
 // ============================================================================
 
@@ -48,6 +48,7 @@ const serverStartTime = Date.now();
 //
 // EXAMPLE RESPONSE:
 // {
+//   "status": "healthy",
 //   "ok": true,
 //   "timestamp": "2024-01-15T10:30:45.123Z",
 //   "uptime": 34500000
@@ -63,6 +64,7 @@ router.get('/health', (request, response) => {
   // Status 200 = "OK, everything is fine"
   // json() automatically converts object to JSON and sets Content-Type header
   response.status(200).json({
+    status: 'healthy',                 // Stable, human-readable health state
     ok: true,                          // Simple indicator: yes, I'm healthy
     timestamp: new Date().toISOString(), // ISO 8601 format timestamp
     uptime: uptime,                     // How many milliseconds server has been running
