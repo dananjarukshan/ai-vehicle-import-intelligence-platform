@@ -66,6 +66,10 @@ The backend starts with `node src/server.js`. Configure the platform health chec
 7. Confirm a signed-out API request returns 401 and a disallowed role receives 403 without being signed out.
 8. Inspect browser logs and network responses to ensure no access token, password, or service-role key is printed.
 
+## Smoke testing
+
+Use [`SMOKE_TEST_CHECKLIST.md`](SMOKE_TEST_CHECKLIST.md) for the local production, preview, authentication, RBAC, CRUD, estimation, CORS, secret-exposure, and post-deployment checks. Complete the automated tests and build first, then record manual checks separately for every deployed environment.
+
 ## Security reminders
 
 - Supabase manages browser session persistence. The application does not write tokens to custom storage keys.
